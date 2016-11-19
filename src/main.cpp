@@ -1,47 +1,100 @@
-#include <AccelStepper.h>
-#define HALFSTEP 8
+#include <CheapStepper.h>
 
-// Motor pin definitions
-#define motor0Pin1  4     // IN1 on the ULN2003 driver 1
-#define motor0Pin2  5     // IN2 on the ULN2003 driver 1
-#define motor0Pin3  6     // IN3 on the ULN2003 driver 1
-#define motor0Pin4  7     // IN4 on the ULN2003 driver 1
-#define motor1Pin1  8     // IN1 on the ULN2003 driver 1
-#define motor1Pin2  9     // IN2 on the ULN2003 driver 1
-#define motor1Pin3  10     // IN3 on the ULN2003 driver 1
-#define motor1Pin4  11     // IN4 on the ULN2003 driver 1
+// next, declare the stepper
+// and connect pins 8,9,10,11 to IN1,IN2,IN3,IN4 on ULN2003 board
 
-// Initialize with pin sequence IN1-IN3-IN2-IN4 for using the AccelStepper with 28BYJ-48
-AccelStepper stepper0(HALFSTEP, motor0Pin1, motor0Pin3, motor0Pin2, motor0Pin4);
-AccelStepper stepper1(HALFSTEP, motor1Pin1, motor1Pin3, motor1Pin2, motor1Pin4);
+CheapStepper stepper (12,11,10,9);
 
-void setup()
-{
-	stepper1.setMaxSpeed(1000.0);
-	stepper1.setAcceleration(100.0);
-	stepper1.setSpeed(1000);
-	stepper1.moveTo(20000);
-	stepper0.setMaxSpeed(1000.0);
-	stepper0.setAcceleration(100.0);
-	stepper0.setSpeed(1000);
-	stepper0.moveTo(20000);
+ // let's create a boolean variable to save the direction of our rotation
 
-}//--(end setup )---
+boolean moveClockwise = true;
 
-void loop()
-{
 
-	//Change direction when the stepper reaches the target position
-	if (stepper1.distanceToGo() == 0)
-	{
-		stepper1.moveTo(-stepper1.currentPosition());
-	}
-	stepper1.run();
+void setup() {
 
-	//Change direction when the stepper reaches the target position
-	if (stepper0.distanceToGo() == 0)
-	{
-		stepper0.moveTo(-stepper0.currentPosition());
-	}
-	stepper0.run();
+  // let's set a custom speed of 20rpm (the default is ~16.25rpm)
+
+  stepper.setRpm(15);
+  /* Note: CheapStepper library assumes you are powering your 28BYJ-48 stepper
+   * using an external 5V power supply (>100mA) for RPM calculations
+   * -- don't try to power the stepper directly from the Arduino
+   *
+   * accepted RPM range: 6RPM (may overheat) - 24RPM (may skip)
+   * ideal range: 10RPM (safe, high torque) - 22RPM (fast, low torque)
+   */
+
+  // now let's set up a serial connection and print some stepper info to the console
+
+  Serial.begin(9600); Serial.println();
+  Serial.print(stepper.getRpm()); // get the RPM of the stepper
+  Serial.print(" rpm = delay of ");
+  Serial.print(stepper.getDelay()); // get delay between steps for set RPM
+  Serial.print(" microseconds between steps");
+  Serial.println();
+
+  // stepper.setTotalSteps(4076);
+  /* you can uncomment the above line if you think your motor
+   * is geared 63.68395:1 (measured) rather than 64:1 (advertised)
+   * which would make the total steps 4076 (rather than default 4096)
+   * for more info see: http://forum.arduino.cc/index.php?topic=71964.15
+   */
+}
+
+void loop() {
+
+    // let's do a clockwise move first
+
+    moveClockwise = true;
+
+    // let's move the stepper clockwise to position 2048
+    // which is 180 degrees, a half-turn (if using default of 4096 total steps)
+
+    stepper.moveTo (moveClockwise, 2048);
+
+    // now let's print the stepper position to the console
+
+    Serial.print("step position: ");
+    Serial.print(stepper.getStep()); // get the current step position
+    Serial.print(" / 4096");
+    Serial.println();
+
+    // now let's wait one second
+
+    delay(1000); // wait a sec
+
+    // and now let's move another 90 degrees (a quarter-turn) clockwise
+
+    stepper.moveDegrees (moveClockwise, 90);
+    // stepper.moveDegreesCW (90); <--- another way to do a clockwise 90 degree turn
+
+    // let's print the stepper position to the console again
+
+    Serial.print("step position: ");
+    Serial.print(stepper.getStep());
+    Serial.print(" / 4096");
+    Serial.println();
+
+    // and wait another second
+
+    delay(1000);
+
+    // ok, now let's reverse directions (to counter-clockwise)
+
+    moveClockwise = false;
+
+    // and move back to the start position (0 degree)
+
+    stepper.moveToDegree (moveClockwise, 0);
+    // moveClockwise is now false, so move counter-clockwise back to start
+
+    // let's print the position to the console once again
+
+    Serial.print("step position: ");
+    Serial.print(stepper.getStep());
+    Serial.print(" / 4096");
+    Serial.println();
+
+    // and wait another second before starting loop() over
+
+    delay(1000);
 }
